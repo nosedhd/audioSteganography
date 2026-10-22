@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: estego
+Version: 0.1.0
+Summary: Esteganografía en audio: LSB, eco, espectro ensanchado y codificación de fase
+Requires-Python: >=3.10
+Requires-Dist: numpy
+Requires-Dist: scipy
+Requires-Dist: matplotlib
+Requires-Dist: soundfile
+Provides-Extra: extras
+Requires-Dist: pydub; extra == "extras"
+Requires-Dist: sounddevice; extra == "extras"
+Requires-Dist: pandas; extra == "extras"

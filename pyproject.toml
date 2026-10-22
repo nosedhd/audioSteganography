@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "estego"
+version = "0.1.0"
+description = "Esteganografía en audio: LSB, eco, espectro ensanchado y codificación de fase"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "soundfile",
+]
+
+[project.optional-dependencies]
+extras = [
+    "pydub",        # conversión a MP3 desde Python (requiere ffmpeg instalado)
+    "sounddevice",  # reproducir/grabar para el canal aéreo
+    "pandas",       # tablas de resultados
+]
+
+[tool.setuptools.packages.find]
+include = ["estego*"]
