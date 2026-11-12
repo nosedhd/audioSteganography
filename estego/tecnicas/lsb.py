@@ -3,13 +3,11 @@ import numpy as np
 
 audio, fs = sf.read("pruebas/Prueba1.wav", dtype="int16")
 
-#print(len(audio))
 def estereo_a_mono(audio):
     if audio.ndim > 1:          # si es estéreo, quedarse con un canal
         print("El audio es estéreo, se convertirá a mono.")
         audio = audio[:, 0]
     return audio
-
 
 # Primero usamos texto
 
@@ -22,6 +20,8 @@ def encriptar_texto(texto, audio):
         raise ValueError("El audio no tiene suficiente capacidad para ocultar el mensaje.")
     # Crear una copia del audio para modificarlo
     audio_modificado = np.copy(estereo_a_mono(audio))
+    print(audio_modificado)
+    print("la nada misma")
     # Modificar los bits menos significativos del audio con los bits del mensaje
     for i in range(len(binario)):
         audio_modificado[i] = (audio_modificado[i] & ~1) | int(binario[i])
@@ -31,16 +31,27 @@ def encriptar_texto(texto, audio):
 def desencriptar_texto(audio):
     # Extraer los bits menos significativos del audio
     audio = estereo_a_mono(audio)
-    binario = ''.join(str(audio[i] & 1) for i in range(len(audio)))
-    # Convertir el binario a texto
-    texto = ''.join(chr(int(binario[i:i+8], 2)) for i in range(0, len(binario), 8))
-    return texto
+    
+    caracteres = []
+    # Recorrer el audio en bloques de 8 bits para reconstruir los caracteres
+    for i in range(0, len(audio), 8):
+        if i + 8 > len(audio):
+            break
+        # Extraer el LSB de cada uno de los 8 elementos de audio
+        byte_bits = ''.join(str(audio[i + j] & 1) for j in range(8))
+        char = chr(int(byte_bits, 2))
+        caracteres.append(char)
+        
+        # Comprobar si hemos alcanzado el final marcado por el delimitador
+        texto_actual = ''.join(caracteres)
+        if "###END###" in texto_actual:
+            return texto_actual.split("###END###")[0]
+            
+    return ''.join(caracteres)
 
-mensaje = "ki onda"
+mensaje = "ki ondá"
 encriptar_texto(mensaje, audio)
 
 audio_encriptado, fs = sf.read("pruebas/Prueba1_encriptada.wav", dtype="int16")
 texto_desencriptado = desencriptar_texto(audio_encriptado)
 print("Texto desencriptado: " + texto_desencriptado)
-
-
