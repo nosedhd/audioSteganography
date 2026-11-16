@@ -1,57 +1,43 @@
-import soundfile as sf
+"""Esteganografía LSB sobre audio PCM entero."""
+
+from collections.abc import Iterable
+
 import numpy as np
 
-audio, fs = sf.read("pruebas/Prueba1.wav", dtype="int16")
-
-def estereo_a_mono(audio):
-    if audio.ndim > 1:          # si es estéreo, quedarse con un canal
-        print("El audio es estéreo, se convertirá a mono.")
-        audio = audio[:, 0]
-    return audio
-
-# Primero usamos texto
-
-def encriptar_texto(texto, audio):
-    texto_completo = texto + "###END###"
-    # Convertir el texto a binario
-    binario = ''.join(format(ord(c), '08b') for c in texto_completo)
-    # Asegurarse de que el audio tenga suficiente capacidad para ocultar el mensaje
-    if len(binario) > len(audio):
-        raise ValueError("El audio no tiene suficiente capacidad para ocultar el mensaje.")
-    # Crear una copia del audio para modificarlo
-    audio_modificado = np.copy(estereo_a_mono(audio))
-    print(audio_modificado)
-    print("la nada misma")
-    # Modificar los bits menos significativos del audio con los bits del mensaje
-    for i in range(len(binario)):
-        audio_modificado[i] = (audio_modificado[i] & ~1) | int(binario[i])
-    sf.write("pruebas/Prueba1_encriptada.wav", audio_modificado, fs)
+from estego.utils import a_mono, bits_array, normalizar_lsb
 
 
-def desencriptar_texto(audio):
-    # Extraer los bits menos significativos del audio
-    audio = estereo_a_mono(audio)
-    
-    caracteres = []
-    # Recorrer el audio en bloques de 8 bits para reconstruir los caracteres
-    for i in range(0, len(audio), 8):
-        if i + 8 > len(audio):
-            break
-        # Extraer el LSB de cada uno de los 8 elementos de audio
-        byte_bits = ''.join(str(audio[i + j] & 1) for j in range(8))
-        char = chr(int(byte_bits, 2))
-        caracteres.append(char)
-        
-        # Comprobar si hemos alcanzado el final marcado por el delimitador
-        texto_actual = ''.join(caracteres)
-        if "###END###" in texto_actual:
-            return texto_actual.split("###END###")[0]
-            
-    return ''.join(caracteres)
+def ocultar(audio: np.ndarray, bits: Iterable[int] | str) -> np.ndarray:
+    """Oculta bits en las muestras menos significativas del portador."""
+    muestras = normalizar_lsb(audio)
+    bits_vector = bits_array(bits)
+    if bits_vector.size > muestras.size:
+        raise ValueError("El audio no tiene capacidad para el mensaje.")
+    if not np.issubdtype(muestras.dtype, np.integer):
+        raise TypeError("LSB requiere muestras de audio enteras.")
+    resultado = muestras.copy()
+    resultado[: bits_vector.size] = (
+        resultado[: bits_vector.size] & ~np.array(1, dtype=muestras.dtype)
+    ) | bits_vector.astype(muestras.dtype)
+    return resultado
 
-mensaje = "ki ondá"
-encriptar_texto(mensaje, audio)
 
-audio_encriptado, fs = sf.read("pruebas/Prueba1_encriptada.wav", dtype="int16")
-texto_desencriptado = desencriptar_texto(audio_encriptado)
-print("Texto desencriptado: " + texto_desencriptado)
+def extraer(audio: np.ndarray, n_bits: int) -> str:
+    """Extrae exactamente ``n_bits`` bits de las muestras del portador."""
+    muestras = a_mono(audio)
+    if n_bits < 0 or n_bits > muestras.size:
+        raise ValueError("n_bits excede la capacidad del audio.")
+    if not np.issubdtype(muestras.dtype, np.integer):
+        raise TypeError("LSB requiere muestras de audio enteras.")
+    return "".join(str(int(muestra) & 1) for muestra in muestras[:n_bits])
+
+
+if __name__ == "__main__":
+    import soundfile as sf
+
+    audio, fs = sf.read("pruebas/Prueba1.wav", dtype="int16")
+    mensaje = "ki ondá"
+    bits = "".join(format(byte, "08b") for byte in mensaje.encode("utf-8"))
+    audio_stego = ocultar(audio, bits)
+    sf.write("pruebas/Prueba1_encriptada.wav", audio_stego, fs)
+    print(bits_array(extraer(audio_stego, len(bits))).tolist())

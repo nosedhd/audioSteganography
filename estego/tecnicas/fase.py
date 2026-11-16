@@ -1,77 +1,76 @@
+"""Esteganografía mediante codificación de fase."""
+
+from collections.abc import Iterable
+
 import numpy as np
-import soundfile as sf
+
+from estego.utils import a_mono, bits_array, normalizar_portador, recortar
+
+SEGMENTO = 4096
 
 
-def texto_a_bits(texto):
-    return ''.join(format(ord(c), '08b') for c in texto)
-
-def bits_a_texto(binario):
-    caracteres = []
-    for i in range(0, len(binario), 8):
-        byte = binario[i:i+8]
-        if len(byte) < 8:
-            break
-        caracteres.append(chr(int(byte, 2)))
-    return ''.join(caracteres)
-
-
-def _banda(seg, fs, f_min, f_max):
-    """Índices de los bins de la FFT que quedan entre f_min y f_max (Hz)."""
+def _banda(seg: int, fs: int, f_min: int, f_max: int) -> tuple[int, int]:
     k0 = int(round(f_min * seg / fs))
     k1 = int(round(f_max * seg / fs))
+    if not 0 <= k0 < k1 <= seg // 2 + 1:
+        raise ValueError("La banda de frecuencias no es válida.")
     return k0, k1
 
-def encriptar_fase(texto, ruta_audio_original, ruta_audio_salida,
-                   seg=4096, f_min=1000, f_max=3000):
-    audio, fs = sf.read(ruta_audio_original, dtype="float32")
-    if audio.ndim > 1:
-        audio = audio[:, 0]
 
-    bits = texto_a_bits(texto + "###END###")
-    if len(bits) * seg > len(audio):
-        raise ValueError(f"Audio muy corto: necesitas {len(bits)*seg} muestras y hay {len(audio)}.")
-
+def ocultar(
+    audio: np.ndarray,
+    bits: Iterable[int] | str,
+    *,
+    fs: int = 44100,
+    seg: int = SEGMENTO,
+    f_min: int = 1000,
+    f_max: int = 3000,
+) -> np.ndarray:
+    """Oculta un bit por segmento modificando la fase de una banda."""
+    if fs <= 0 or seg <= 0:
+        raise ValueError("fs y seg deben ser positivos.")
+    muestras = normalizar_portador(audio)
+    bits_vector = bits_array(bits)
+    if bits_vector.size * seg > muestras.size:
+        raise ValueError("El audio no tiene capacidad para el mensaje.")
     k0, k1 = _banda(seg, fs, f_min, f_max)
-    audio_stego = np.copy(audio)
+    for i, bit in enumerate(bits_vector):
+        inicio = i * seg
+        bloque = muestras[inicio : inicio + seg]
+        espectro = np.fft.rfft(bloque)
+        fase = np.pi / 2 if bit else -np.pi / 2
+        espectro[k0:k1] = np.abs(espectro[k0:k1]) * np.exp(1j * fase)
+        muestras[inicio : inicio + seg] = np.fft.irfft(espectro, n=seg)
+    return recortar(muestras)
 
-    for i, bit in enumerate(bits):
-        s = audio[i*seg:(i+1)*seg]
-        X = np.fft.rfft(s)
 
-        magnitud = np.abs(X[k0:k1])
-        fase = np.pi/2 if bit == '1' else -np.pi/2
-
-        # misma magnitud, fase nueva
-        X[k0:k1] = magnitud * np.exp(1j * fase)
-
-        audio_stego[i*seg:(i+1)*seg] = np.fft.irfft(X, n=seg)
-
-    audio_stego /= max(1.0, np.max(np.abs(audio_stego)))
-    sf.write(ruta_audio_salida, audio_stego, fs)
-    print(f"Mensaje de {len(texto)} caracteres ocultado por fase en '{ruta_audio_salida}'.")
-
-def extraer_bits_fase(audio, n_bits, seg, fs, f_min, f_max):
+def extraer(
+    audio: np.ndarray,
+    n_bits: int,
+    *,
+    fs: int = 44100,
+    seg: int = SEGMENTO,
+    f_min: int = 1000,
+    f_max: int = 3000,
+) -> str:
+    """Extrae exactamente ``n_bits`` por votación de fase."""
+    muestras = a_mono(audio)
+    if n_bits < 0 or n_bits * seg > muestras.size:
+        raise ValueError("n_bits excede la capacidad del audio.")
     k0, k1 = _banda(seg, fs, f_min, f_max)
     bits = []
     for i in range(n_bits):
-        s = audio[i*seg:(i+1)*seg]
-        fases = np.angle(np.fft.rfft(s)[k0:k1])
-        votos = np.sum(np.sign(fases))        # votación mayoritaria entre todos los bins
-        bits.append('1' if votos > 0 else '0')
-    return ''.join(bits)
+        bloque = muestras[i * seg : (i + 1) * seg]
+        fases = np.angle(np.fft.rfft(bloque)[k0:k1])
+        bits.append("1" if np.sum(np.sign(fases)) > 0 else "0")
+    return "".join(bits)
 
-def desencriptar_fase(ruta_audio_stego, seg=4096, f_min=1000, f_max=3000):
-    audio, fs = sf.read(ruta_audio_stego, dtype="float32")
-    if audio.ndim > 1:
-        audio = audio[:, 0]
 
-    n_bits = len(audio) // seg
-    bits = extraer_bits_fase(audio, n_bits, seg, fs, f_min, f_max)
+if __name__ == "__main__":
+    import soundfile as sf
 
-    texto = bits_a_texto(bits)
-    if "###END###" in texto:
-        return texto.split("###END###")[0]
-    return texto
-
-encriptar_fase("ki onda", "pruebas/audio_final.wav", "pruebas/Prueba1_fase.wav")
-print(desencriptar_fase("pruebas/Prueba1_fase.wav"))
+    audio, fs = sf.read("pruebas/Prueba1.wav", dtype="float32")
+    bits = "01010101"
+    audio_stego = ocultar(audio, bits, fs=fs)
+    sf.write("pruebas/Prueba1_fase.wav", audio_stego, fs)
+    print(extraer(audio_stego, len(bits), fs=fs))

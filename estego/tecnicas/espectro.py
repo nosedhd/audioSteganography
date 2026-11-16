@@ -1,68 +1,65 @@
+"""Esteganografía por espectro ensanchado."""
+
+from collections.abc import Iterable
+
 import numpy as np
-import soundfile as sf
 
-# Se debe hacer un utils para texto a bits o audio mono 
+from estego.utils import a_mono, bits_array, normalizar_portador, recortar
 
-
-def texto_a_bits(texto):
-    return ''.join(format(ord(c), '08b') for c in texto)
-
-def bits_a_texto(binario):
-    caracteres = []
-    for i in range(0, len(binario), 8):
-        byte = binario[i:i+8]
-        if len(byte) < 8:
-            break
-        caracteres.append(chr(int(byte, 2)))
-    return ''.join(caracteres)
+SEGMENTO = 4096
 
 
-def generar_pn(seg, clave):
-    """Secuencia pseudoaleatoria de +1/-1. La clave (semilla) es secreta y compartida."""
+def generar_pn(seg: int, clave: int) -> np.ndarray:
+    """Genera una secuencia pseudoaleatoria reproducible de +1/-1."""
     return np.random.default_rng(clave).choice([-1.0, 1.0], size=seg)
 
-def encriptar_espectro(texto, ruta_audio_original, ruta_audio_salida,
-                       seg=4096, alfa=0.02, clave=1234):
-    audio, fs = sf.read(ruta_audio_original, dtype="float32")
-    if audio.ndim > 1:
-        audio = audio[:, 0]
 
-    bits = texto_a_bits(texto + "###END###")
-    if len(bits) * seg > len(audio):
-        raise ValueError(f"Audio muy corto: necesitas {len(bits)*seg} muestras y hay {len(audio)}.")
-
+def ocultar(
+    audio: np.ndarray,
+    bits: Iterable[int] | str,
+    *,
+    seg: int = SEGMENTO,
+    alfa: float = 0.02,
+    clave: int = 1234,
+) -> np.ndarray:
+    """Oculta un bit por segmento mediante modulación PN."""
+    if seg <= 0 or alfa < 0:
+        raise ValueError("Parámetros de espectro inválidos.")
+    muestras = normalizar_portador(audio)
+    bits_vector = bits_array(bits)
+    if bits_vector.size * seg > muestras.size:
+        raise ValueError("El audio no tiene capacidad para el mensaje.")
     pn = generar_pn(seg, clave)
-    audio_stego = np.copy(audio)
+    for i, bit in enumerate(bits_vector):
+        signo = 1.0 if bit else -1.0
+        inicio = i * seg
+        muestras[inicio : inicio + seg] += alfa * signo * pn
+    return recortar(muestras)
 
-    for i, bit in enumerate(bits):
-        signo = 1.0 if bit == '1' else -1.0
-        audio_stego[i*seg:(i+1)*seg] += alfa * signo * pn
 
-    audio_stego /= max(1.0, np.max(np.abs(audio_stego)))
-    sf.write(ruta_audio_salida, audio_stego, fs)
-    print(f"Mensaje de {len(texto)} caracteres ocultado por espectro ensanchado en '{ruta_audio_salida}'.")
-
-def extraer_bits_espectro(audio, n_bits, seg, clave):
+def extraer(
+    audio: np.ndarray,
+    n_bits: int,
+    *,
+    seg: int = SEGMENTO,
+    clave: int = 1234,
+) -> str:
+    """Extrae exactamente ``n_bits`` por correlación con la secuencia PN."""
+    muestras = a_mono(audio)
+    if n_bits < 0 or n_bits * seg > muestras.size:
+        raise ValueError("n_bits excede la capacidad del audio.")
     pn = generar_pn(seg, clave)
-    bits = []
-    for i in range(n_bits):
-        s = audio[i*seg:(i+1)*seg]
-        correlacion = np.dot(s, pn)          # el "despreading"
-        bits.append('1' if correlacion > 0 else '0')
-    return ''.join(bits)
+    return "".join(
+        "1" if np.dot(muestras[i * seg : (i + 1) * seg], pn) > 0 else "0"
+        for i in range(n_bits)
+    )
 
-def desencriptar_espectro(ruta_audio_stego, seg=4096, clave=1234):
-    audio, fs = sf.read(ruta_audio_stego, dtype="float32")
-    if audio.ndim > 1:
-        audio = audio[:, 0]
 
-    n_bits = len(audio) // seg               # lee todos los segmentos posibles
-    bits = extraer_bits_espectro(audio, n_bits, seg, clave)
+if __name__ == "__main__":
+    import soundfile as sf
 
-    texto = bits_a_texto(bits)
-    if "###END###" in texto:
-        return texto.split("###END###")[0]
-    return texto
-
-encriptar_espectro("ki onda", "pruebas/audio_final.wav", "pruebas/Prueba1_ss.wav", alfa=0.02)
-print(desencriptar_espectro("pruebas/Prueba1_ss.wav"))
+    audio, fs = sf.read("pruebas/Prueba1.wav", dtype="float32")
+    bits = "01010101"
+    audio_stego = ocultar(audio, bits)
+    sf.write("pruebas/Prueba1_ss.wav", audio_stego, fs)
+    print(extraer(audio_stego, len(bits)))
