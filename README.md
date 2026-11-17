@@ -1,309 +1,194 @@
 # Audio Steganography
 
-Proyecto de esteganografía en audio con técnicas LSB, eco, espectro ensanchado
-y codificación de fase.
+Herramienta de investigación y experimentación en **esteganografía de audio** y evaluación de robustez frente a canales con pérdida (compresión MP3, transcodificación de voz en WhatsApp y grabación acústica por micrófono).
 
-## Requisitos
+---
 
-- Windows 10/11.
-- Python 3.10 o superior. Se recomienda Python 3.12 o 3.13 de
-  [python.org](https://www.python.org/downloads/windows/).
+## 🎯 Técnicas soportadas
 
-Las dependencias del proyecto están declaradas en
-[pyproject.toml](./pyproject.toml):
+1. **LSB (*Least Significant Bit*):** Inserción en el bit menos significativo de muestras PCM enteras (`int16`). Muy alta fidelidad perceptual (SNR > 100 dB), pero no sobrevive a canales con pérdida.
+2. **Eco Hiding:** Adición de ecos sutiles con diferentes retardos temporales ($d_0$ y $d_1$) decodificables mediante análisis cepstral.
+3. **Espectro Ensanchado (DSSS):** Modulación de los bits mediante una secuencia pseudoaleatoria (código PN) distribuida a lo largo de un segmento espectral.
+4. **Codificación de Fase:** Modificación de la fase de las componentes frecuenciales en una banda seleccionada (1 kHz – 3 kHz).
 
-- `numpy`
-- `scipy`
-- `matplotlib`
-- `soundfile`
+---
 
-> **Importante:** aunque Python 3.14 puede ser compatible con el proyecto,
-> algunas versiones de MSYS2 no tienen wheels precompilados de SciPy. En ese
-> caso `pip` intenta compilar SciPy y se necesita un compilador Fortran. Para
-> Windows, el Python oficial de python.org evita este problema en la mayoría
-> de los casos.
+## 🚀 Inicio rápido (Instalación)
 
-## Crear el entorno virtual
+### 1. Requisitos
+* Windows 10/11 (o Linux/macOS).
+* Python 3.10 o superior (recomendado 3.12 o 3.13).
 
-Abre PowerShell en la carpeta raíz del proyecto:
+### 2. Configurar el entorno virtual
+Abre PowerShell en la raíz del proyecto y ejecuta:
 
 ```powershell
-cd C:\Codigos\Cibersexo\Esteganografia\Investigacion\audioSteganography
+# Crear el entorno virtual
+py -m venv .venv
+
+# Activar el entorno (PowerShell en Windows)
+.\.venv\Scripts\Activate.ps1
+
+# Actualizar pip e instalar dependencias
+pip install --upgrade pip
+pip install -e .
 ```
 
-Con Python 3.13 instalado desde python.org, crea un entorno virtual local:
+> **Nota:** Si PowerShell bloquea scripts de activación (`Activate.ps1`), puedes ejecutar directamente usando `.\.venv\Scripts\python.exe` en lugar de `python`.
+
+---
+
+## ⚡ Comandos principales (Uso directo)
+
+El repositorio ya cuenta con audios de prueba en `pruebas/audios/` para portadores sin pérdida (`.wav`) y canales degradados (`mp3/`, `whatsapp/`, `microfono/`).
+
+### 1. Evaluar todas las métricas en un solo comando
+Ejecuta la evaluación cruzada de todas las técnicas y canales (imprime una tabla comparativa con BER, Accuracy, SNR y Tasa Efectiva):
 
 ```powershell
-py -3.13 -m venv .venv
+python -m pruebas.evaluar_todos
 ```
 
-El Python oficial de Windows usa la carpeta `.venv\Scripts` para los
-ejecutables.
+*Si deseas evaluar un solo canal:*
+```powershell
+python -m pruebas.evaluar_todos --canal mp3
+python -m pruebas.evaluar_todos --canal whatsapp
+python -m pruebas.evaluar_todos --canal microfono
+```
 
-## Instalar las dependencias
+---
 
-Instala el proyecto en modo editable. Esto instala automáticamente las
-dependencias de `pyproject.toml`:
+### 2. Desencriptar y guardar mensajes en archivos `.txt` individuales
+Para extraer los datos ocultos de todos los audios y generar un reporte de texto por cada archivo analizado:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m pip install --upgrade pip
-& .\.venv\Scripts\python.exe -m pip install -e .
+python -m pruebas.desencriptar_audios
 ```
 
-El modo editable permite modificar el código del paquete sin reinstalarlo
-después de cada cambio.
+Los reportes se guardan automáticamente en la carpeta **`Resultados/mensajes_txt/`**:
+* Un archivo `.txt` individual para cada audio analizado (ej. `mp3_stego_eco_mp3_desencriptado.txt`).
+* Un archivo consolidado: `00_RESUMEN_TODOS.txt`.
 
-También están disponibles dependencias opcionales:
+---
+
+### 3. Evaluación individual de un audio específico (`ejecutar_canal.py`)
+
+Para evaluar un archivo particular pasando por el alineador y extractor:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m pip install -e ".[extras]"
+python -m pruebas.ejecutar_canal `
+  --canal <mp3|whatsapp|microfono> `
+  --tecnica <lsb|eco|espectro|fase> `
+  --mensaje <"texto" o "secuencia_bits"> `
+  --audio-original <ruta_original.wav> `
+  --audio-stego <ruta_stego.wav> `
+  --audio-recibido <ruta_audio_canal>
 ```
 
-Estas incluyen `pydub`, `sounddevice` y `pandas`. Para convertir archivos MP3
-con `pydub`, también es necesario instalar `ffmpeg` y agregarlo al `PATH`.
+#### Ejemplos listos para copiar y pegar:
 
-## Activar el entorno
-
-En PowerShell:
-
+**Canal MP3:**
 ```powershell
-& .\.venv\Scripts\Activate.ps1
+# LSB (Mensaje: "ki ondá")
+python -m pruebas.ejecutar_canal --canal mp3 --tecnica lsb --mensaje "ki ondá" --audio-original .\pruebas\audios\original.wav --audio-stego .\pruebas\audios\stego_lsb.wav --audio-recibido .\pruebas\audios\mp3\stego_lsb_mp3.mp3
+
+# Espectro Ensanchado (Mensaje: "01010101")
+python -m pruebas.ejecutar_canal --canal mp3 --tecnica espectro --mensaje "01010101" --audio-original .\pruebas\audios\original.wav --audio-stego .\pruebas\audios\stego_espectro.wav --audio-recibido .\pruebas\audios\mp3\stego_espectro_mp3.mp3
 ```
 
-Si PowerShell bloquea la ejecución del script de activación, usa el intérprete
-del entorno directamente sin activarlo:
-
+**Canal WhatsApp:**
 ```powershell
-& .\.venv\Scripts\python.exe --version
+python -m pruebas.ejecutar_canal --canal whatsapp --tecnica fase --mensaje "01010101" --audio-original .\pruebas\audios\original.wav --audio-stego .\pruebas\audios\stego_fase.wav --audio-recibido .\pruebas\audios\whatsapp\stego_fase_whatsapp.ogg
 ```
 
-Para comprobar que se está usando el entorno correcto:
-
+**Canal Micrófono/Parlante:**
 ```powershell
-& .\.venv\Scripts\python.exe -c "import sys; print(sys.executable)"
-& .\.venv\Scripts\python.exe -c "import soundfile; print(soundfile.__version__)"
+python -m pruebas.ejecutar_canal --canal microfono --tecnica espectro --mensaje "01010101" --audio-original .\pruebas\audios\original.wav --audio-stego .\pruebas\audios\stego_espectro.wav --audio-recibido .\pruebas\audios\microfono\stego_espectro_micro.ogg
 ```
 
-La segunda orden debe mostrar la versión instalada de `soundfile`.
+---
 
-## Flujo de trabajo de un experimento
+## 🛠️ Cómo ocultar un mensaje nuevo en un audio
 
-El experimento se divide en tres pasos:
-
-1. Crear el audio estego en memoria.
-2. Pasar ese audio por un canal con pérdida.
-3. Evaluar los bits recuperados con las métricas.
-
-Las técnicas disponibles son:
-
-- `lsb`: un bit por muestra PCM.
-- `eco`: un bit por segmento de 4096 muestras.
-- `espectro`: un bit por segmento de 4096 muestras.
-- `fase`: un bit por segmento de 4096 muestras.
-
-### Preparar las carpetas
-
-Puedes organizar los archivos de cada prueba así:
-
-```text
-pruebas/
-└── audios/
-    ├── original.wav
-    ├── estego_lsb.wav
-    ├── estego_eco.wav
-    ├── estego_espectro.wav
-    ├── estego_fase.wav
-    ├── mp3/
-    │   └── estego_eco.mp3
-    ├── whatsapp/
-    │   └── estego_eco.ogg
-    └── microfono/
-        └── estego_eco.wav
-```
-
-Los archivos de `mp3/`, `whatsapp/` y `microfono/` son los archivos que se
-obtienen después de aplicar cada canal. El programa no reproduce, envía ni
-graba audio: solo lee el archivo indicado.
-
-### Crear un archivo estego
-
-Por ejemplo, para ocultar un mensaje con eco:
+Puedes usar las técnicas directamente desde scripts o interactivo en Python:
 
 ```python
 import soundfile as sf
-
-from estego.tecnicas import eco, lsb
+from estego.tecnicas import eco, espectro, fase, lsb
 from estego.utils import texto_a_bits
 
-audio, fs = sf.read("pruebas/audios/original.wav", dtype="float32")
-bits = texto_a_bits("ki ondá")
-audio_estego = eco.ocultar(audio, bits, seg=eco.SEGMENTO, alfa=0.1)
-sf.write("pruebas/audios/estego_eco.wav", audio_estego, fs)
+# 1. Mensaje a ocultar
+mensaje = "ki ondá"
+bits = texto_a_bits(mensaje)
+
+# 2. Para LSB (requiere audio entero int16):
+audio_pcm, fs = sf.read("pruebas/audios/original.wav", dtype="int16")
+stego_lsb = lsb.ocultar(audio_pcm, bits)
+sf.write("pruebas/audios/stego_lsb.wav", stego_lsb, fs)
+
+# 3. Para técnicas transformadas (Eco, Espectro, Fase en float32):
+audio_flt, fs = sf.read("pruebas/audios/original.wav", dtype="float32")
+
+# Eco
+stego_eco = eco.ocultar(audio_flt, bits, alfa=0.1)
+sf.write("pruebas/audios/stego_eco.wav", stego_eco, fs)
+
+# Espectro Ensanchado (clave pseudoaleatoria)
+stego_esp = espectro.ocultar(audio_flt, bits, clave=1234, alfa=0.02)
+sf.write("pruebas/audios/stego_espectro.wav", stego_esp, fs)
+
+# Fase
+stego_fase = fase.ocultar(audio_flt, bits, fs=fs)
+sf.write("pruebas/audios/stego_fase.wav", stego_fase, fs)
 ```
 
-Para cambiar de técnica, sustituye `eco` por `lsb`, `espectro` o `fase`.
-Para LSB, lee el portador como `int16`:
+---
 
-```python
-audio, fs = sf.read("pruebas/audios/original.wav", dtype="int16")
-audio_estego = lsb.ocultar(audio, bits)
-sf.write("pruebas/audios/estego_lsb.wav", audio_estego, fs)
-```
+## 📊 Interpretación de las Métricas
 
-### Ejecutar una evaluación
+Cada prueba evalúa seis métricas de calidad y fiabilidad:
 
-El ejecutor se llama desde la raíz del repositorio:
+| Métrica | Descripción | Valor ideal |
+| :--- | :--- | :--- |
+| **`ber`** (*Bit Error Rate*) | Proporción de bits erróneos ($0.0$ a $1.0$). Si es $\approx 0.5$, la salida es puro ruido aleatorio. | **`0.0`** |
+| **`accuracy_bits`** | Porcentaje de bits recuperados correctamente ($1.0 - \text{BER}$). | **`1.0`** (100%) |
+| **`recuperacion_exacta`** | `True` si el mensaje se recuperó íntegro (cero errores); `False` si hubo algún bit cambiado. | **`True`** |
+| **`snr_db`** (*Signal-to-Noise Ratio*) | Mide la imperceptibilidad del mensaje oculto comparado con el portador base. Valores altos indican que la modificación es inaudible. | **$> 30\text{ dB}$** (LSB: $> 100\text{ dB}$) |
+| **`capacidad_bps`** | Tasa nominal de inyección de información del esquema ($f_s / \text{muestras\_por\_bit}$). | Mayor capacidad |
+| **`tasa_informacion_efectiva_bps`** | Capacidad real transmitida según el modelo de Shannon (Canal Binario Simétrico). Si $\text{BER} \ge 0.5$, cae a **0.0 bps**. | Próximo a la capacidad |
 
-```powershell
-& .\.venv\Scripts\python.exe -m pruebas.ejecutar_canal --help
-```
+> **Nota teórica sobre LSB:** LSB es una técnica temporal espacial que no resiste compresión psicoacústica con pérdida (MP3 o WhatsApp Opus) ni perturbaciones acústicas (micrófono). En estos canales, el BER esperado es $\approx 0.5$ (equivalente a ruido blanco equiprobable) y la tasa efectiva es $0.0\text{ bps}$. Para canales degradados, se deben emplear técnicas robustas como **Espectro Ensanchado** o **Fase**.
 
-La opción `--audio-recibido` debe apuntar al archivo que ya pasó por el canal.
+---
 
-#### Canal MP3
-
-Convierte previamente el archivo estego a MP3 y luego evalúalo:
-
-```powershell
-& .\.venv\Scripts\python.exe -m pruebas.ejecutar_canal `
-  --canal mp3 `
-  --tecnica eco `
-  --mensaje "ki ondá" `
-  --audio-original .\pruebas\audios\original.wav `
-  --audio-stego .\pruebas\audios\estego_eco.wav `
-  --audio-recibido .\pruebas\audios\mp3\estego_eco.mp3 `
-  --alfa 0.1
-```
-
-#### Canal WhatsApp
-
-Envía manualmente el audio estego por WhatsApp, descarga el resultado y
-colócalo en la carpeta de la prueba:
-
-```powershell
-& .\.venv\Scripts\python.exe -m pruebas.ejecutar_canal `
-  --canal whatsapp `
-  --tecnica eco `
-  --mensaje "ki ondá" `
-  --audio-original .\pruebas\audios\original.wav `
-  --audio-stego .\pruebas\audios\estego_eco.wav `
-  --audio-recibido .\pruebas\audios\whatsapp\estego_eco.ogg `
-  --alfa 0.1
-```
-
-#### Canal parlante/micrófono
-
-Realiza la reproducción y grabación manualmente. Guarda el resultado y
-evalúalo indicando su ruta:
-
-```powershell
-& .\.venv\Scripts\python.exe -m pruebas.ejecutar_canal `
-  --canal microfono `
-  --tecnica eco `
-  --mensaje "ki ondá" `
-  --audio-original .\pruebas\audios\original.wav `
-  --audio-stego .\pruebas\audios\estego_eco.wav `
-  --audio-recibido .\pruebas\audios\microfono\estego_eco.wav `
-  --alfa 0.1
-```
-
-Para evaluar otra técnica, cambia `--tecnica` por `lsb`, `espectro` o `fase`.
-En LSB se recomienda añadir `--sin-alinear`, porque normalizar o alinear el
-audio altera las muestras enteras y puede destruir los bits menos
-significativos:
-
-```powershell
-& .\.venv\Scripts\python.exe -m pruebas.ejecutar_canal `
-  --canal whatsapp `
-  --tecnica lsb `
-  --mensaje "ki ondá" `
-  --audio-original .\pruebas\audios\original.wav `
-  --audio-stego .\pruebas\audios\estego_lsb.wav `
-  --audio-recibido .\pruebas\audios\whatsapp\estego_lsb.wav `
-  --sin-alinear
-```
-
-### Resultado de las métricas
-
-Cada ejecución imprime:
+## 📁 Estructura del Proyecto
 
 ```text
-ber: ...
-accuracy_bits: ...
-recuperacion_exacta: ...
-snr_db: ...
-capacidad_bps: ...
-tasa_informacion_efectiva_bps: ...
+audioSteganography/
+├── estego/                       # Módulo principal de la librería
+│   ├── tecnicas/                 # Implementaciones: lsb, eco, espectro, fase
+│   ├── metricas.py               # Algoritmos de alineación, SNR, BER y Shannon
+│   └── utils.py                  # Conversión de bits, mono y normalización
+├── pruebas/
+│   ├── audios/                   # Audios de prueba
+│   │   ├── original.wav          # Audio portador original limpio
+│   │   ├── stego_*.wav           # Audios estego generados en WAV
+│   │   ├── mp3/                  # Audios procesados por compresión MP3
+│   │   ├── whatsapp/             # Audios procesados por la red de WhatsApp (.ogg)
+│   │   └── microfono/            # Grabaciones acústicas ambiente (.ogg)
+│   ├── ejecutar_canal.py         # CLI para evaluar una prueba individual
+│   ├── evaluar_todos.py          # Script automático para evaluar todas las pruebas
+│   └── desencriptar_audios.py    # Script para extraer mensajes y generar .txt
+└── Resultados/
+    ├── Resultados.docx           # Documento de reporte final
+    └── mensajes_txt/             # Reportes .txt individuales generados
 ```
 
-- `ber`: proporción de bits incorrectos.
-- `accuracy_bits`: proporción de bits correctos.
-- `recuperacion_exacta`: indica si todos los bits fueron recuperados.
-- `snr_db`: degradación causada por ocultar el mensaje.
-- `capacidad_bps`: capacidad teórica de la técnica.
-- `tasa_informacion_efectiva_bps`: información útil después de considerar la
-  BER.
+---
 
-También se pueden usar las funciones directamente desde Python:
+## ❓ Preguntas frecuentes / Solución de problemas
 
-```python
-from estego.metricas import evaluar_prueba
-
-resultado = evaluar_prueba(
-    bits_originales,
-    bits_recuperados,
-    audio_original,
-    audio_estego,
-    fs,
-    muestras_por_bit=eco.SEGMENTO,
-)
-print(resultado.como_dict())
-```
-
-## Solución al error `No module named 'soundfile'`
-
-El error:
-
-```text
-ModuleNotFoundError: No module named 'soundfile'
-```
-
-significa que `soundfile` no está instalado en el intérprete que ejecutó el
-script. No es suficiente instalarlo en otro Python del sistema. Comprueba el
-intérprete y reinstala la dependencia en el entorno del proyecto:
-
-```powershell
-& .\.venv\Scripts\python.exe -c "import sys; print(sys.executable)"
-& .\.venv\Scripts\python.exe -m pip install soundfile
-& .\.venv\Scripts\python.exe .\estego\tecnicas\lsb.py
-```
-
-## Si se usa MSYS2
-
-El comando `C:\msys64\mingw64\bin\python.exe -m pip install -e .` puede
-descargar el código fuente de NumPy/SciPy en lugar de un wheel. SciPy requiere
-Fortran para compilarse, por lo que la instalación puede terminar con:
-
-```text
-ERROR: Unknown compiler(s)
-```
-
-La opción recomendada es instalar Python 3.12 o 3.13 desde python.org y
-recrear `.venv` con ese intérprete. Si se desea continuar con MSYS2, hay que
-instalar las dependencias nativas mediante `pacman` y configurar el toolchain
-de compilación de MSYS2; no se recomienda mezclar paquetes `pip` de Windows
-con los paquetes del entorno MSYS2.
-
-## Recrear el entorno
-
-Si el entorno queda inconsistente, elimínalo y créalo nuevamente. Esta acción
-solo elimina el entorno virtual generado, no el código del proyecto:
-
-```powershell
-Remove-Item -Recurse -Force .\.venv
-py -3.13 -m venv .venv
-& .\.venv\Scripts\python.exe -m pip install -e .
-```
-
-El directorio `.venv` está excluido del control de versiones y no debe
-subirse al repositorio.
+* **Error: `No module named 'soundfile'`:**  
+  Asegúrate de ejecutar con el entorno virtual activo o invocando `.\.venv\Scripts\python.exe`.
+* **Error de PowerShell con scripts desactivados (`Activate.ps1`):**  
+  Ejecuta PowerShell como administrador y corre: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`, o ejecuta directamente con el binario del entorno virtual: `.\.venv\Scripts\python.exe`.
