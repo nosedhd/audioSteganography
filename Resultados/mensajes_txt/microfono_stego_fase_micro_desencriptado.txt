@@ -1,0 +1,27 @@
+======================================================================
+REPORTE DE DESENCRIPTACIÓN / EXTRACCIÓN ESTEGANOGRÁFICA
+======================================================================
+Archivo analizado : pruebas\audios\microfono\stego_fase_micro.ogg
+Técnica           : FASE
+Audio referencia  : stego_fase.wav
+Frecuencia (fs)   : 48000 Hz
+
+----------------------------------------------------------------------
+RESULTADO DE LA EXTRACCIÓN DEL MENSAJE
+----------------------------------------------------------------------
+Mensaje esperado  : 'U'
+Bits esperados    : 01010101
+Bits extraídos    : 01010001
+Texto decodificado: 'Q'
+
+Bits correctos    : 7 / 8
+Accuracy          : 87.50 %
+BER (Bit Error)   : 0.1250
+Recuperación OK   : NO (CON ERRORES)
+
+----------------------------------------------------------------------
+EXTRACCIÓN A 64 BITS (Equivalente al mensaje 'ki ondá')
+----------------------------------------------------------------------
+Bits (64 bits)    : 0101000110010110110010101001010101010101010110111010110101101001
+Texto decodificado: 'Q�ʕU[�i'
+======================================================================

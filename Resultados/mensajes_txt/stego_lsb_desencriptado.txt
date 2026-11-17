@@ -1,0 +1,21 @@
+======================================================================
+REPORTE DE DESENCRIPTACIÓN / EXTRACCIÓN ESTEGANOGRÁFICA
+======================================================================
+Archivo analizado : pruebas\audios\stego_lsb.wav
+Técnica           : LSB
+Audio referencia  : N/A (Audio original estego)
+Frecuencia (fs)   : 48000 Hz
+
+----------------------------------------------------------------------
+RESULTADO DE LA EXTRACCIÓN DEL MENSAJE
+----------------------------------------------------------------------
+Mensaje esperado  : 'ki ondá'
+Bits esperados    : 0110101101101001001000000110111101101110011001001100001110100001
+Bits extraídos    : 0110101101101001001000000110111101101110011001001100001110100001
+Texto decodificado: 'ki ondá'
+
+Bits correctos    : 64 / 64
+Accuracy          : 100.00 %
+BER (Bit Error)   : 0.0000
+Recuperación OK   : SÍ (EXACTA)
+======================================================================

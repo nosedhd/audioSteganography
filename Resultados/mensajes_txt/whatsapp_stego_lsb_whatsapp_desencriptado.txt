@@ -1,0 +1,22 @@
+======================================================================
+REPORTE DE DESENCRIPTACIÓN / EXTRACCIÓN ESTEGANOGRÁFICA
+======================================================================
+Archivo analizado : pruebas\audios\whatsapp\stego_lsb_whatsapp.ogg
+Técnica           : LSB
+Audio referencia  : stego_lsb.wav
+Frecuencia (fs)   : 48000 Hz
+
+----------------------------------------------------------------------
+RESULTADO DE LA EXTRACCIÓN DEL MENSAJE
+----------------------------------------------------------------------
+Mensaje esperado  : 'ki ondá'
+Bits esperados    : 0110101101101001001000000110111101101110011001001100001110100001
+Bits extraídos    : 0011111000000010111101010001101100010011000010101111111111001100
+Texto decodificado: '>�
+��'
+
+Bits correctos    : 26 / 64
+Accuracy          : 40.62 %
+BER (Bit Error)   : 0.5938
+Recuperación OK   : NO (CON ERRORES)
+======================================================================

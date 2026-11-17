@@ -1,5 +1,6 @@
 """Funciones comunes para evaluar una técnica después de un canal con pérdida."""
 
+import inspect
 from collections.abc import Callable, Iterable
 
 import numpy as np
@@ -33,6 +34,15 @@ def evaluar_audio_recibido(
             fs_referencia=fs,
             fs_recibido=fs_recibido,
         )
+        if np.issubdtype(audio_stego.dtype, np.integer):
+            info = np.iinfo(audio_stego.dtype)
+            recibido = np.clip(np.rint(recibido), info.min, info.max).astype(audio_stego.dtype)
+        elif np.issubdtype(audio_stego.dtype, np.floating):
+            recibido = recibido.astype(audio_stego.dtype)
+
+    sig = inspect.signature(extraer)
+    if "fs" in sig.parameters and "fs" not in parametros_extraer:
+        parametros_extraer["fs"] = fs
 
     bits_recuperados = extraer(recibido, n_bits, **parametros_extraer)
     return evaluar_prueba(

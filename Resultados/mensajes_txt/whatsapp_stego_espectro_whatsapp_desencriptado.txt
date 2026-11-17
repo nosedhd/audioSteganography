@@ -1,0 +1,27 @@
+======================================================================
+REPORTE DE DESENCRIPTACIÓN / EXTRACCIÓN ESTEGANOGRÁFICA
+======================================================================
+Archivo analizado : pruebas\audios\whatsapp\stego_espectro_whatsapp.ogg
+Técnica           : ESPECTRO
+Audio referencia  : stego_espectro.wav
+Frecuencia (fs)   : 48000 Hz
+
+----------------------------------------------------------------------
+RESULTADO DE LA EXTRACCIÓN DEL MENSAJE
+----------------------------------------------------------------------
+Mensaje esperado  : 'U'
+Bits esperados    : 01010101
+Bits extraídos    : 01010101
+Texto decodificado: 'U'
+
+Bits correctos    : 8 / 8
+Accuracy          : 100.00 %
+BER (Bit Error)   : 0.0000
+Recuperación OK   : SÍ (EXACTA)
+
+----------------------------------------------------------------------
+EXTRACCIÓN A 64 BITS (Equivalente al mensaje 'ki ondá')
+----------------------------------------------------------------------
+Bits (64 bits)    : 0101010110111010001100011110011100001011110001110001000101000001
+Texto decodificado: 'U�1��A'
+======================================================================

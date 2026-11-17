@@ -22,6 +22,7 @@ def evaluar_microfono(
     ruta_audio_recibido: str | Path,
     dtype: str = "float32",
     muestras_por_bit: int | None = None,
+    alinear_audio: bool = True,
     **parametros_extraer,
 ) -> MetricasFiabilidad:
     """Lee una grabación de parlante/micrófono y evalúa los bits recuperados."""
@@ -34,7 +35,7 @@ def evaluar_microfono(
         fs,
         extraer,
         muestras_por_bit=muestras_por_bit,
-        alinear_audio=True,
+        alinear_audio=alinear_audio,
         fs_recibido=fs_recibido,
         **parametros_extraer,
     )

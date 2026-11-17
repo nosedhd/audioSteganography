@@ -1,0 +1,22 @@
+===============================================================================================
+RESUMEN GENERAL DE DESENCRIPTACIÓN DE TODOS LOS AUDIOS
+===============================================================================================
+Archivo                              | Técnica  | Exacta  | Accuracy   | Texto Decodificado   | Bits Extraídos
+-----------------------------------------------------------------------------------------------
+stego_lsb.wav                        | lsb      | True    | 100.00 %  | 'ki ondá'            | 0110101101101001001000000110111101101110011001001100001110100001
+stego_eco.wav                        | eco      | True    | 100.00 %  | 'U'                  | 01010101
+stego_espectro.wav                   | espectro | True    | 100.00 %  | 'U'                  | 01010101
+stego_fase.wav                       | fase     | True    | 100.00 %  | 'U'                  | 01010101
+mp3/stego_lsb_mp3.mp3                | lsb      | False   | 46.88  %  | '�G�*�E�'            | 1111000110000110010001111100101000101010110010010100010111000100
+mp3/stego_eco_mp3.mp3                | eco      | True    | 100.00 %  | 'U'                  | 01010101
+mp3/stego_espectro_mp3.mp3           | espectro | True    | 100.00 %  | 'U'                  | 01010101
+mp3/stego_fase_mp3.mp3               | fase     | True    | 100.00 %  | 'U'                  | 01010101
+whatsapp/stego_lsb_whatsapp.ogg      | lsb      | False   | 40.62  %  | '>\x02�\x1b\x13\n��' | 0011111000000010111101010001101100010011000010101111111111001100
+whatsapp/stego_eco_whatsapp.ogg      | eco      | False   | 75.00  %  | '�'                  | 11010001
+whatsapp/stego_espectro_whatsapp.ogg | espectro | True    | 100.00 %  | 'U'                  | 01010101
+whatsapp/stego_fase_whatsapp.ogg     | fase     | True    | 100.00 %  | 'U'                  | 01010101
+microfono/stego_lsb_micro.ogg        | lsb      | False   | 40.62  %  | '��__\x07\x19��'     | 1011010110010010010111110101111100000111000110011111100110000000
+microfono/stego_eco_micro.ogg        | eco      | False   | 62.50  %  | 'a'                  | 01100001
+microfono/stego_espectro_micro.ogg   | espectro | False   | 87.50  %  | 'T'                  | 01010100
+microfono/stego_fase_micro.ogg       | fase     | False   | 87.50  %  | 'Q'                  | 01010001
+===============================================================================================

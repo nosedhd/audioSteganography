@@ -41,3 +41,6 @@ if __name__ == "__main__":
     audio_stego = ocultar(audio, bits)
     sf.write("pruebas/audios/stego_lsb.wav", audio_stego, fs)
     print(bits_array(extraer(audio_stego, len(bits))).tolist())
+    
+
+
