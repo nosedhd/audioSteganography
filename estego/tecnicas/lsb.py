@@ -35,9 +35,9 @@ def extraer(audio: np.ndarray, n_bits: int) -> str:
 if __name__ == "__main__":
     import soundfile as sf
 
-    audio, fs = sf.read("pruebas/Prueba1.wav", dtype="int16")
+    audio, fs = sf.read("pruebas/audios/original.wav", dtype="int16")
     mensaje = "ki ondá"
     bits = "".join(format(byte, "08b") for byte in mensaje.encode("utf-8"))
     audio_stego = ocultar(audio, bits)
-    sf.write("pruebas/Prueba1_encriptada.wav", audio_stego, fs)
+    sf.write("pruebas/audios/stego_lsb.wav", audio_stego, fs)
     print(bits_array(extraer(audio_stego, len(bits))).tolist())

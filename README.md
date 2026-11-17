@@ -86,24 +86,179 @@ Para comprobar que se está usando el entorno correcto:
 
 La segunda orden debe mostrar la versión instalada de `soundfile`.
 
-## Ejecutar una técnica
+## Flujo de trabajo de un experimento
 
-Desde la raíz del proyecto:
+El experimento se divide en tres pasos:
 
-```powershell
-& .\.venv\Scripts\python.exe .\estego\tecnicas\lsb.py
+1. Crear el audio estego en memoria.
+2. Pasar ese audio por un canal con pérdida.
+3. Evaluar los bits recuperados con las métricas.
+
+Las técnicas disponibles son:
+
+- `lsb`: un bit por muestra PCM.
+- `eco`: un bit por segmento de 4096 muestras.
+- `espectro`: un bit por segmento de 4096 muestras.
+- `fase`: un bit por segmento de 4096 muestras.
+
+### Preparar las carpetas
+
+Puedes organizar los archivos de cada prueba así:
+
+```text
+pruebas/
+└── audios/
+    ├── original.wav
+    ├── estego_lsb.wav
+    ├── estego_eco.wav
+    ├── estego_espectro.wav
+    ├── estego_fase.wav
+    ├── mp3/
+    │   └── estego_eco.mp3
+    ├── whatsapp/
+    │   └── estego_eco.ogg
+    └── microfono/
+        └── estego_eco.wav
 ```
 
-También se puede ejecutar con el entorno activado:
+Los archivos de `mp3/`, `whatsapp/` y `microfono/` son los archivos que se
+obtienen después de aplicar cada canal. El programa no reproduce, envía ni
+graba audio: solo lee el archivo indicado.
 
-```powershell
-python .\estego\tecnicas\lsb.py
+### Crear un archivo estego
+
+Por ejemplo, para ocultar un mensaje con eco:
+
+```python
+import soundfile as sf
+
+from estego.tecnicas import eco, lsb
+from estego.utils import texto_a_bits
+
+audio, fs = sf.read("pruebas/audios/original.wav", dtype="float32")
+bits = texto_a_bits("ki ondá")
+audio_estego = eco.ocultar(audio, bits, seg=eco.SEGMENTO, alfa=0.1)
+sf.write("pruebas/audios/estego_eco.wav", audio_estego, fs)
 ```
 
-Las rutas de audio usadas por cada técnica son relativas a la carpeta desde la
-que se ejecuta el comando. Por tanto, ejecuta los scripts desde la raíz del
-repositorio o actualiza la ruta del archivo de audio en el script según la
-ubicación real del archivo.
+Para cambiar de técnica, sustituye `eco` por `lsb`, `espectro` o `fase`.
+Para LSB, lee el portador como `int16`:
+
+```python
+audio, fs = sf.read("pruebas/audios/original.wav", dtype="int16")
+audio_estego = lsb.ocultar(audio, bits)
+sf.write("pruebas/audios/estego_lsb.wav", audio_estego, fs)
+```
+
+### Ejecutar una evaluación
+
+El ejecutor se llama desde la raíz del repositorio:
+
+```powershell
+& .\.venv\Scripts\python.exe -m pruebas.ejecutar_canal --help
+```
+
+La opción `--audio-recibido` debe apuntar al archivo que ya pasó por el canal.
+
+#### Canal MP3
+
+Convierte previamente el archivo estego a MP3 y luego evalúalo:
+
+```powershell
+& .\.venv\Scripts\python.exe -m pruebas.ejecutar_canal `
+  --canal mp3 `
+  --tecnica eco `
+  --mensaje "ki ondá" `
+  --audio-original .\pruebas\audios\original.wav `
+  --audio-stego .\pruebas\audios\estego_eco.wav `
+  --audio-recibido .\pruebas\audios\mp3\estego_eco.mp3 `
+  --alfa 0.1
+```
+
+#### Canal WhatsApp
+
+Envía manualmente el audio estego por WhatsApp, descarga el resultado y
+colócalo en la carpeta de la prueba:
+
+```powershell
+& .\.venv\Scripts\python.exe -m pruebas.ejecutar_canal `
+  --canal whatsapp `
+  --tecnica eco `
+  --mensaje "ki ondá" `
+  --audio-original .\pruebas\audios\original.wav `
+  --audio-stego .\pruebas\audios\estego_eco.wav `
+  --audio-recibido .\pruebas\audios\whatsapp\estego_eco.ogg `
+  --alfa 0.1
+```
+
+#### Canal parlante/micrófono
+
+Realiza la reproducción y grabación manualmente. Guarda el resultado y
+evalúalo indicando su ruta:
+
+```powershell
+& .\.venv\Scripts\python.exe -m pruebas.ejecutar_canal `
+  --canal microfono `
+  --tecnica eco `
+  --mensaje "ki ondá" `
+  --audio-original .\pruebas\audios\original.wav `
+  --audio-stego .\pruebas\audios\estego_eco.wav `
+  --audio-recibido .\pruebas\audios\microfono\estego_eco.wav `
+  --alfa 0.1
+```
+
+Para evaluar otra técnica, cambia `--tecnica` por `lsb`, `espectro` o `fase`.
+En LSB se recomienda añadir `--sin-alinear`, porque normalizar o alinear el
+audio altera las muestras enteras y puede destruir los bits menos
+significativos:
+
+```powershell
+& .\.venv\Scripts\python.exe -m pruebas.ejecutar_canal `
+  --canal whatsapp `
+  --tecnica lsb `
+  --mensaje "ki ondá" `
+  --audio-original .\pruebas\audios\original.wav `
+  --audio-stego .\pruebas\audios\estego_lsb.wav `
+  --audio-recibido .\pruebas\audios\whatsapp\estego_lsb.wav `
+  --sin-alinear
+```
+
+### Resultado de las métricas
+
+Cada ejecución imprime:
+
+```text
+ber: ...
+accuracy_bits: ...
+recuperacion_exacta: ...
+snr_db: ...
+capacidad_bps: ...
+tasa_informacion_efectiva_bps: ...
+```
+
+- `ber`: proporción de bits incorrectos.
+- `accuracy_bits`: proporción de bits correctos.
+- `recuperacion_exacta`: indica si todos los bits fueron recuperados.
+- `snr_db`: degradación causada por ocultar el mensaje.
+- `capacidad_bps`: capacidad teórica de la técnica.
+- `tasa_informacion_efectiva_bps`: información útil después de considerar la
+  BER.
+
+También se pueden usar las funciones directamente desde Python:
+
+```python
+from estego.metricas import evaluar_prueba
+
+resultado = evaluar_prueba(
+    bits_originales,
+    bits_recuperados,
+    audio_original,
+    audio_estego,
+    fs,
+    muestras_por_bit=eco.SEGMENTO,
+)
+print(resultado.como_dict())
+```
 
 ## Solución al error `No module named 'soundfile'`
 

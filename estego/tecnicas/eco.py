@@ -60,8 +60,8 @@ def extraer(
 if __name__ == "__main__":
     import soundfile as sf
 
-    audio, fs = sf.read("pruebas/Prueba1.wav", dtype="float32")
+    audio, fs = sf.read("pruebas/audios/original.wav", dtype="float32")
     bits = "01010101"
     audio_stego = ocultar(audio, bits)
-    sf.write("pruebas/Prueba1_eco.wav", audio_stego, fs)
+    sf.write("pruebas/audios/stego_eco.wav", audio_stego, fs)
     print(extraer(audio_stego, len(bits)))
