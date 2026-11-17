@@ -1,0 +1,45 @@
+# Entornos y paquetes generados
+.venv/
+venv/
+env/
+estego.egg-info/
+*.egg
+*.egg-info/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Variables de entorno y secretos locales
+.env
+.env.*
+!.env.example
+
+# IDE y sistema operativo
+.vscode/
+.idea/
+.vs/
+.DS_Store
+Thumbs.db
+
+# Logs y archivos temporales
+*.log
+*.tmp
+*.temp
+
+# Audios y resultados generados durante los experimentos
+pruebas/audios/
+pruebas/*.mp3
+pruebas/*.ogg
+pruebas/*.flac
+pruebas/*_recibida.wav
+pruebas/*_grabacion.wav
+pruebas/canal_*.wav
+pruebas/canal_*.mp3
+pruebas/Prueba1_*.wav
