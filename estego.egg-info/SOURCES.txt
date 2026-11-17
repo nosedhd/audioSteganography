@@ -3,6 +3,7 @@ pyproject.toml
 estego/__init__.py
 estego/canales.py
 estego/metricas.py
+estego/utils.py
 estego.egg-info/PKG-INFO
 estego.egg-info/SOURCES.txt
 estego.egg-info/dependency_links.txt

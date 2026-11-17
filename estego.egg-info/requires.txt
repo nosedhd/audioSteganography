@@ -1,9 +1,3 @@
 numpy
 scipy
-matplotlib
 soundfile
-
-[extras]
-pydub
-sounddevice
-pandas
