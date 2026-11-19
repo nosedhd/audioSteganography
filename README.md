@@ -40,9 +40,39 @@ pip install -e .
 
 ## ⚡ Comandos principales (Uso directo)
 
-El repositorio ya cuenta con audios de prueba en `pruebas/audios/` para portadores sin pérdida (`.wav`) y canales degradados (`mp3/`, `whatsapp/`, `microfono/`).
+El repositorio cuenta con herramientas diseñadas tanto para investigación masiva como para **demostraciones en vivo** en presentaciones y exposiciones.
 
-### 1. Evaluar todas las métricas en un solo comando
+---
+
+### 🎤 1. Demostración en vivo (Para exposiciones)
+
+Puedes ocultar y recuperar mensajes en vivo de dos formas: **Modo Interactivo** (te va preguntando paso a paso) o mediante **Línea de comandos directa**.
+
+#### A. Ocultar un mensaje en vivo:
+```powershell
+# Modo interactivo (te pedirá la técnica y el mensaje en pantalla):
+python -m estego.ocultar
+
+# O directo con parámetros:
+python -m estego.ocultar --tecnica lsb --mensaje "Mensaje secreto para la expo" --salida demo_lsb.wav
+python -m estego.ocultar --tecnica espectro --mensaje "Clave segura 2026" --salida demo_esp.wav
+```
+
+#### B. Extraer y recuperar el mensaje en vivo:
+```powershell
+# Modo interactivo:
+python -m estego.extraer
+
+# O directo indicando el audio generado:
+python -m estego.extraer --tecnica lsb --audio demo_lsb.wav --mensaje-referencia "Mensaje secreto para la expo"
+python -m estego.extraer --tecnica espectro --audio demo_esp.wav --caracteres 17
+```
+
+*(Si instalaste con `pip install -e .`, también puedes usar los comandos directos `estego-ocultar` y `estego-extraer`).*
+
+---
+
+### 📊 2. Evaluar todas las métricas en un solo comando
 Ejecuta la evaluación cruzada de todas las técnicas y canales (imprime una tabla comparativa con BER, Accuracy, SNR y Tasa Efectiva):
 
 ```powershell
@@ -58,7 +88,7 @@ python -m pruebas.evaluar_todos --canal microfono
 
 ---
 
-### 2. Desencriptar y guardar mensajes en archivos `.txt` individuales
+### 📝 3. Desencriptar y guardar mensajes en archivos `.txt` individuales
 Para extraer los datos ocultos de todos los audios y generar un reporte de texto por cada archivo analizado:
 
 ```powershell
@@ -71,7 +101,7 @@ Los reportes se guardan automáticamente en la carpeta **`Resultados/mensajes_tx
 
 ---
 
-### 3. Evaluación individual de un audio específico (`ejecutar_canal.py`)
+### 🔬 4. Evaluación individual de un audio específico (`ejecutar_canal.py`)
 
 Para evaluar un archivo particular pasando por el alineador y extractor:
 

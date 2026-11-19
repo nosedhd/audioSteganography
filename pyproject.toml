@@ -13,5 +13,17 @@ dependencies = [
     "soundfile",
 ]
 
+[project.optional-dependencies]
+extras = [
+    "matplotlib",
+    "pydub",
+    "pandas",
+]
+
+[project.scripts]
+estego-ocultar = "estego.ocultar:main"
+estego-extraer = "estego.extraer:main"
+estego-evaluar = "pruebas.evaluar_todos:main"
+
 [tool.setuptools.packages.find]
-include = ["estego*"]
+include = ["estego*", "pruebas*"]
