@@ -2,6 +2,9 @@
 y guardar el resultado de cada uno en un archivo .txt independiente.
 """
 
+import argparse
+import subprocess
+import tempfile
 from pathlib import Path
 import soundfile as sf
 import numpy as np
@@ -13,12 +16,7 @@ from estego.metricas import normalizar_y_alinear
 CARPETA_AUDIOS = Path("pruebas/audios")
 CARPETA_SALIDA = Path("Resultados/mensajes_txt")
 
-MENSAJES_ESPERADOS = {
-    "lsb": ("ki ondá", texto_a_bits("ki ondá")),
-    "eco": ("U", "01010101"),
-    "espectro": ("U", "01010101"),
-    "fase": ("U", "01010101"),
-}
+MENSAJE_POR_DEFECTO = "ki ondá"
 
 # Lista de audios a procesar: (ruta_relativa, tecnica, referencia_stego_para_alinear)
 AUDIOS = [
@@ -29,22 +27,22 @@ AUDIOS = [
     ("stego_fase.wav", "fase", None),
 
     # Canal MP3
-    ("mp3/stego_lsb_mp3.mp3", "lsb", "stego_lsb.wav"),
-    ("mp3/stego_eco_mp3.mp3", "eco", "stego_eco.wav"),
-    ("mp3/stego_espectro_mp3.mp3", "espectro", "stego_espectro.wav"),
-    ("mp3/stego_fase_mp3.mp3", "fase", "stego_fase.wav"),
+    ("mp3/stego_lsb.mp3", "lsb", "stego_lsb.wav"),
+    ("mp3/stego_eco.mp3", "eco", "stego_eco.wav"),
+    ("mp3/stego_espectro.mp3", "espectro", "stego_espectro.wav"),
+    ("mp3/stego_fase.mp3", "fase", "stego_fase.wav"),
 
     # Canal WhatsApp
-    ("whatsapp/stego_lsb_whatsapp.ogg", "lsb", "stego_lsb.wav"),
-    ("whatsapp/stego_eco_whatsapp.ogg", "eco", "stego_eco.wav"),
-    ("whatsapp/stego_espectro_whatsapp.ogg", "espectro", "stego_espectro.wav"),
-    ("whatsapp/stego_fase_whatsapp.ogg", "fase", "stego_fase.wav"),
+    ("whatsapp/stego_lsb.ogg", "lsb", "stego_lsb.wav"),
+    ("whatsapp/stego_eco.ogg", "eco", "stego_eco.wav"),
+    ("whatsapp/stego_espectro.ogg", "espectro", "stego_espectro.wav"),
+    ("whatsapp/stego_fase.ogg", "fase", "stego_fase.wav"),
 
     # Canal Micrófono
-    ("microfono/stego_lsb_micro.ogg", "lsb", "stego_lsb.wav"),
-    ("microfono/stego_eco_micro.ogg", "eco", "stego_eco.wav"),
-    ("microfono/stego_espectro_micro.ogg", "espectro", "stego_espectro.wav"),
-    ("microfono/stego_fase_micro.ogg", "fase", "stego_fase.wav"),
+    ("microfono/Lsbmicro.m4a", "lsb", "stego_lsb.wav"),
+    ("microfono/Ecomicro.m4a", "eco", "stego_eco.wav"),
+    ("microfono/Espectromicro.m4a", "espectro", "stego_espectro.wav"),
+    ("microfono/Fasemicro.m4a", "fase", "stego_fase.wav"),
 ]
 
 
@@ -61,13 +59,38 @@ def extraer_de_audio(audio: np.ndarray, fs: int, tecnica: str, n_bits: int) -> s
     raise ValueError(f"Técnica desconocida: {tecnica}")
 
 
-def procesar_audio(ruta_relativa: str, tecnica: str, ref_relativa: str | None, carpeta_salida: Path) -> dict:
+def leer_audio(ruta: Path, dtype: str) -> tuple[np.ndarray, int, Path | None]:
+    if ruta.suffix.lower() != ".m4a":
+        audio, fs = sf.read(ruta, dtype=dtype)
+        return audio, fs, None
+
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temporal:
+        ruta_temporal = Path(temporal.name)
+    resultado = subprocess.run(
+        ["ffmpeg", "-y", "-v", "error", "-i", str(ruta),
+         "-vn", "-acodec", "pcm_s16le", str(ruta_temporal)],
+        capture_output=True,
+        text=True,
+    )
+    if resultado.returncode != 0:
+        ruta_temporal.unlink(missing_ok=True)
+        raise RuntimeError(f"No se pudo convertir {ruta} con FFmpeg: {resultado.stderr}")
+    audio, fs = sf.read(ruta_temporal, dtype=dtype)
+    return audio, fs, ruta_temporal
+
+
+def texto_seguro_consola(texto: str) -> str:
+    return texto.encode("ascii", errors="backslashreplace").decode("ascii")
+
+
+def procesar_audio(ruta_relativa: str, tecnica: str, ref_relativa: str | None,
+                   carpeta_salida: Path, texto_esperado: str, bits_esperados: str) -> dict:
     ruta_audio = CARPETA_AUDIOS / ruta_relativa
     if not ruta_audio.exists():
         return {"archivo": ruta_relativa, "error": "Archivo no encontrado"}
 
     dtype = "int16" if tecnica == "lsb" else "float32"
-    audio, fs = sf.read(ruta_audio, dtype=dtype)
+    audio, fs, temporal = leer_audio(ruta_audio, dtype)
 
     # Si tiene audio de referencia, alinear para compensar retardos del canal
     if ref_relativa is not None:
@@ -81,15 +104,27 @@ def procesar_audio(ruta_relativa: str, tecnica: str, ref_relativa: str | None, c
             audio = al.astype(np.float32)
         fs = fs_ref
 
-    texto_esperado, bits_esperados = MENSAJES_ESPERADOS[tecnica]
     n_bits = len(bits_esperados)
+    muestras_por_bit = 1 if tecnica == "lsb" else 4096
+    if n_bits > len(audio) // muestras_por_bit:
+        if temporal is not None:
+            temporal.unlink(missing_ok=True)
+        return {
+            "archivo": ruta_relativa,
+            "error": f"Capacidad insuficiente: requiere {n_bits} bits",
+        }
 
     # Extraer los bits del mensaje base
     bits_extraidos = extraer_de_audio(audio, fs, tecnica, n_bits)
     texto_extraido = bits_a_texto(bits_extraidos)
 
     # Calcular errores
-    errores = sum(b1 != b2 for b1, b2 in zip(bits_esperados, bits_extraidos))
+    comparables = min(len(bits_esperados), len(bits_extraidos))
+    errores = sum(
+        b1 != b2
+        for b1, b2 in zip(bits_esperados[:comparables], bits_extraidos[:comparables])
+    )
+    errores += abs(len(bits_esperados) - len(bits_extraidos))
     ber = errores / n_bits
     accuracy = 1.0 - ber
     exacta = (errores == 0)
@@ -141,6 +176,8 @@ def procesar_audio(ruta_relativa: str, tecnica: str, ref_relativa: str | None, c
 
     contenido_txt = "\n".join(lineas)
     ruta_txt.write_text(contenido_txt, encoding="utf-8")
+    if temporal is not None:
+        temporal.unlink(missing_ok=True)
 
     return {
         "archivo": ruta_relativa,
@@ -154,6 +191,22 @@ def procesar_audio(ruta_relativa: str, tecnica: str, ref_relativa: str | None, c
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Extrae el mismo mensaje de todos los audios disponibles."
+    )
+    parser.add_argument("--mensaje", default=MENSAJE_POR_DEFECTO)
+    parser.add_argument("--bits", default=None, help="Cadena binaria explícita.")
+    args = parser.parse_args()
+
+    if args.bits is not None:
+        if any(bit not in "01" for bit in args.bits):
+            parser.error("--bits solo puede contener ceros y unos.")
+        texto_esperado = args.mensaje
+        bits_esperados = args.bits
+    else:
+        texto_esperado = args.mensaje
+        bits_esperados = texto_a_bits(texto_esperado)
+
     CARPETA_SALIDA.mkdir(parents=True, exist_ok=True)
     print("\n" + "=" * 95)
     print("INICIANDO DESENCRIPTACIÓN DE TODOS LOS AUDIOS...")
@@ -164,14 +217,17 @@ def main():
 
     resumen = []
     for rel, tec, ref in AUDIOS:
-        res = procesar_audio(rel, tec, ref, CARPETA_SALIDA)
+        res = procesar_audio(
+            rel, tec, ref, CARPETA_SALIDA,
+            texto_esperado, bits_esperados,
+        )
         if "error" in res:
             print(f"{rel:<36} | ERROR: {res['error']}")
             continue
 
         resumen.append(res)
         txt_nombre = res["txt_salida"].name
-        texto_mostrar = repr(res["texto"])
+        texto_mostrar = repr(texto_seguro_consola(res["texto"]))
         print(f"{rel:<36} | {tec:<8} | {str(res['exacta']):<7} | {texto_mostrar:<20} | {txt_nombre}")
 
     # Guardar también un resumen consolidado con todos
@@ -185,7 +241,7 @@ def main():
     ]
     for r in resumen:
         lineas_resumen.append(
-            f"{r['archivo']:<36} | {r['tecnica']:<8} | {str(r['exacta']):<7} | {r['accuracy']*100:<6.2f} %  | {repr(r['texto']):<20} | {r['bits']}"
+            f"{r['archivo']:<36} | {r['tecnica']:<8} | {str(r['exacta']):<7} | {r['accuracy']*100:<6.2f} %  | {repr(texto_seguro_consola(r['texto'])):<20} | {r['bits']}"
         )
     lineas_resumen.extend(["=" * 95, ""])
     ruta_resumen.write_text("\n".join(lineas_resumen), encoding="utf-8")
