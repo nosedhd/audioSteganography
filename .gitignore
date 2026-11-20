@@ -5,6 +5,7 @@ env/
 estego.egg-info/
 *.egg
 *.egg-info/
+estego.egg-info
 
 # Python
 __pycache__/
