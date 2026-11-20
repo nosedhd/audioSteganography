@@ -101,7 +101,35 @@ Los reportes se guardan automáticamente en la carpeta **`Resultados/mensajes_tx
 
 ---
 
-### 🔬 4. Evaluación individual de un audio específico (`ejecutar_canal.py`)
+### 🌐 4. Benchmark Opus vía FFmpeg (12, 16, 24, 32 kbps) vs WhatsApp Real
+Evalúa automáticamente el códec Opus con 1024 bits y calcula los **Intervalos de Confianza de Wilson al 95%** para la BER:
+
+```powershell
+python -m pruebas.canal_opus
+```
+*(Guarda el reporte detallado en `Resultados/comparativa_opus_vs_whatsapp.txt`).*
+
+---
+
+### 📉 5. Generar Gráfica de Compromiso (Trade-off BER vs Alfa en MP3 64k)
+Genera automáticamente la curva que demuestra el compromiso entre **Imperceptibilidad (SNR)** y **Robustez (BER)**:
+
+```powershell
+python -m pruebas.graficar_tradeoff
+```
+*(Guarda la imagen en alta resolución en `Resultados/grafica_ber_vs_alfa.png`).*
+
+---
+
+### 🎓 6. Guía completa para la Exposición
+Consulta el documento **`Resultados/GUIA_EXPOSICION.md`** para tener:
+* Estructura recomendada de las diapositivas.
+* Catálogo oficial de metadatos (frecuencias, duraciones, bitrates, dispositivos, volúmenes y distancias).
+* Respuestas a las preguntas difíciles del jurado.
+
+---
+
+### 🔬 7. Evaluación individual de un audio específico (`ejecutar_canal.py`)
 
 Para evaluar un archivo particular pasando por el alineador y extractor:
 

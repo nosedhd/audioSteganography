@@ -5,6 +5,7 @@ from typing import Iterable
 
 import numpy as np
 from scipy.signal import correlate, resample_poly
+from scipy.stats import binomtest
 
 
 @dataclass(frozen=True)
@@ -17,10 +18,19 @@ class MetricasFiabilidad:
     snr_db: float
     capacidad_bps: float
     tasa_informacion_efectiva_bps: float
+    ber_ci_low: float = 0.0
+    ber_ci_high: float = 0.0
+    nivel_confianza: float = 0.95
+    metodo_ci: str = "wilson"
 
-    def como_dict(self) -> dict[str, float | bool]:
+    def como_dict(self) -> dict[str, float | bool | str]:
         """Devuelve las métricas en un formato adecuado para CSV/JSON."""
         return asdict(self)
+
+    @property
+    def ber_ci_str(self) -> str:
+        """Representación legible del intervalo de confianza para la BER."""
+        return f"[{self.ber_ci_low:.4f}, {self.ber_ci_high:.4f}]"
 
 
 def _bits(bits: Iterable[int] | str) -> np.ndarray:
@@ -162,8 +172,10 @@ def evaluar_prueba(
     audio_stego: np.ndarray,
     fs: int,
     muestras_por_bit: int | None = None,
+    nivel_confianza: float = 0.95,
+    metodo_ci: str = "wilson",
 ) -> MetricasFiabilidad:
-    """Calcula fiabilidad, degradación, capacidad y tasa efectiva de una prueba."""
+    """Calcula fiabilidad, degradación, capacidad, tasa efectiva e intervalo de confianza de una prueba."""
     originales = _bits(bits_originales)
     recuperados = _bits(bits_recuperados)
     if originales.size == 0:
@@ -180,6 +192,16 @@ def evaluar_prueba(
     ber = float(errores / originales.size)
     accuracy = float(1.0 - ber)
     exacta = bool(errores == 0)
+
+    # Intervalo de confianza para la proporción de error de bit (Wilson o Clopper-Pearson)
+    if n > 0:
+        res_ci = binomtest(errores, n)
+        ci = res_ci.proportion_ci(confidence_level=nivel_confianza, method=metodo_ci)
+        ci_low = float(ci.low)
+        ci_high = float(ci.high)
+    else:
+        ci_low, ci_high = 0.0, 0.0
+
     duracion = a_mono(audio_original).size / fs
     if duracion <= 0:
         raise ValueError("El audio original debe tener una duración positiva.")
@@ -196,6 +218,10 @@ def evaluar_prueba(
         snr_db=snr_db(audio_original, audio_stego),
         capacidad_bps=capacidad,
         tasa_informacion_efectiva_bps=tasa_efectiva(capacidad, ber),
+        ber_ci_low=ci_low,
+        ber_ci_high=ci_high,
+        nivel_confianza=nivel_confianza,
+        metodo_ci=metodo_ci,
     )
 
 

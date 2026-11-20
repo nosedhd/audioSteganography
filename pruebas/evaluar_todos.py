@@ -36,9 +36,9 @@ def evaluar_todos(canales=None) -> list[dict]:
     ]
     resultados = []
 
-    print("\n" + "=" * 95)
-    print(f"{'Canal':<12} | {'Técnica':<10} | {'BER':<8} | {'Accuracy':<8} | {'Exacta':<7} | {'SNR (dB)':<9} | {'Cap (bps)':<10} | {'Tasa Ef (bps)'}")
-    print("-" * 95)
+    print("\n" + "=" * 115)
+    print(f"{'Canal':<12} | {'Técnica':<10} | {'BER':<8} | {'IC 95% Wilson':<18} | {'Accuracy':<8} | {'Exacta':<7} | {'SNR (dB)':<9} | {'Cap (bps)':<10} | {'Tasa Ef (bps)'}")
+    print("-" * 115)
 
     for canal, subcarpeta, patron in canales_a_evaluar:
         for tec_nombre, (tecnica, muestras_por_bit) in TECNICAS.items():
@@ -103,12 +103,12 @@ def evaluar_todos(canales=None) -> list[dict]:
             resultados.append(d)
 
             print(
-                f"{canal:<12} | {tec_nombre:<10} | {res.ber:<8.4f} | {res.accuracy_bits:<8.4f} | "
+                f"{canal:<12} | {tec_nombre:<10} | {res.ber:<8.4f} | {res.ber_ci_str:<18} | {res.accuracy_bits:<8.4f} | "
                 f"{str(res.recuperacion_exacta):<7} | {res.snr_db:<9.2f} | {res.capacidad_bps:<10.1f} | "
                 f"{res.tasa_informacion_efectiva_bps:<.2f}"
             )
 
-    print("=" * 95 + "\n")
+    print("=" * 115 + "\n")
     return resultados
 
 
